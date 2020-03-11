@@ -1,0 +1,211 @@
+import requests
+from bs4 import BeautifulSoup as bs
+import time
+import re
+import json
+
+
+#for ai training part:
+import hashlib
+import os
+import numpy as np
+import tensorflow as tf
+import model, sample, encoder
+
+baseurl = "http://limburgslied.nl"
+def check_number_of_lyrics_online():
+    url = "http://limburgslied.nl/glossary"
+    r = requests.get(url)
+    soup = bs(r.text, 'html.parser')
+    numbers = soup.find_all("span", {"class": "views-summary views-summary-unformatted"})
+    x = []
+    for span in numbers:
+        link = baseurl + span.a['href']
+        cat = span.a.text.rstrip().lstrip()
+        count = span.a.next_sibling.lstrip().rstrip().replace("(","").replace(")","")
+        x.append({cat: [int(count), link]})
+    return x
+    
+
+def replace_with_newlines(element):
+    text = ''
+    for elem in element.recursiveChildGenerator():
+        if isinstance(elem, str):
+            text += elem.strip()
+        elif elem.name == 'br':
+            text += '\n'
+    return text
+    
+def download_song_data(link, cat_name):
+    file = open("database.txt", 'r', encoding='utf8')
+    database = json.load(file)
+    file.close()
+    try:
+        database["links"]
+    except:
+        database["links"] = {}
+    if cat_name in database["links"]:
+        for song in database["links"][cat_name]:
+            #print(database["links"][cat_name])
+            if song["link"].strip() == link:
+                print("link", link, "al gedownload!")
+                return
+        print("downloading", link) 
+    else:
+        database["links"][cat_name] = []
+
+    r = requests.get(link)
+    time.sleep(3)
+    soup = bs(r.text, 'html.parser')
+    try:
+        title = soup.find("h1", {"class": "title"}).text.lstrip().rstrip()
+    except:
+        title = False
+    try:
+        tekst = soup.find("div", {"class": "field field-name-field-auteur field-type-text field-label-inline clearfix"}).find("div", {"class": "field-items"}).text.lstrip().rstrip()
+    except:
+        tekst = False
+    try:
+        muziek = soup.find("div", {"class": "field field-name-field-componist field-type-text field-label-inline clearfix"}).find("div", {"class": "field-items"}).text.lstrip().rstrip()
+    except:
+        muziek = False
+    try:
+        zang = soup.find("div", {"class": "field field-name-field-artiest field-type-text field-label-inline clearfix"}).find("div", {"class": "field-items"}).text.lstrip().rstrip()
+    except:
+        zang = False
+    try:
+        album = soup.find("div", {"class": "field field-name-field-album field-type-text field-label-inline clearfix"}).find("div", {"class": "field-items"}).text.lstrip().rstrip()
+    except:
+        album = False
+    try:
+        plaats = soup.find("div", {"class": "field field-name-field-plaats field-type-list-text field-label-inline clearfix"}).find("div", {"class": "field-items"}).text.lstrip().rstrip()
+    except:
+        plaats = False
+    try:
+        lyrics = replace_with_newlines(soup.find("div", {"class": "field field-name-body field-type-text-with-summary field-label-hidden"})).lstrip().rstrip()
+    except:
+        lyrics = False
+    
+    x = {
+        "title": title,
+        "tekst": tekst,
+        "muziek": muziek,
+        "zang": zang,
+        "album": album,
+        "plaats": plaats,
+        "lyrics": lyrics,
+        "link": link
+    }
+    database["links"][cat_name].append(x)
+    file = open("database.txt", 'w', encoding='utf8')
+    file.write(json.dumps(database, ensure_ascii=False, indent=4))
+    file.close()
+
+def get_last_page_int(r):
+    soup = bs(r.text, 'html.parser')
+    last_link = soup.find("li", {"class": "pager-last last"}).a['href']
+    num = re.search("page=([0-9]*)", last_link).group(1)
+    return int(num)
+
+def get_data_one_page_from_cat_link(r, cat_name, database):
+    soup = bs(r.text, 'html.parser')
+    tbody = soup.find("tbody")
+    links_raw = tbody.find_all('a')
+    links = []
+    for link in links_raw:
+        link  = baseurl+link['href']
+        download_song_data(link, cat_name)
+
+def get_all_data_from_cat_link(link, cat_name, database):
+    r = requests.get(link)
+    get_data_one_page_from_cat_link(r, cat_name, database)
+    try:
+        last_page_int = get_last_page_int(r)
+    except:
+        return
+    print("page 1 of", str(last_page_int)+":")
+    for n in range(1, last_page_int+1):
+        time.sleep(1)
+        print("page", str(n+1), "of", str(last_page_int)+":")
+        full_url = link+"?page="+str(n)
+        r = requests.get(full_url)
+        get_data_one_page_from_cat_link(r, cat_name, database)
+
+def begin_download(categories):
+    #categories = database["count"]
+    data = []
+    for cat in categories:
+        cat_name = list(cat.keys())[0]
+        print("category", cat_name)
+        link = cat[cat_name][1]
+        get_all_data_from_cat_link(link, cat_name, database)
+        
+def download_database():
+    cat_lyrics_online = check_number_of_lyrics_online()
+    file = open("database.txt", 'r', encoding='utf8')
+    try:
+        database = json.load(file)
+    except:
+        database = {}
+    file.close()
+    
+    if "count" in database: #check and only download the categories that have changed numbers. Converteren naar dict?
+        database_delta = []
+        for existing_cat in database["count"]:
+            cat_name = list(existing_cat.keys())[0]
+            cat_number_local = existing_cat[cat_name][1] #the number of songs in a category
+            for online_cat in cat_lyrics_online:
+                online_cat_name = list(online_cat.keys())[0]
+                if cat_name == online_cat_name:
+                    cat_number_online = online_cat[online_cat_name][1]
+                    if cat_number_local != cat_number_online:
+                        print("Extra songs found in category", cat_name)
+                        database_delta.append(online_cat)
+        if len(database_delta) != 0:
+            print("beginning download of song not already in database")
+            database["count"] = cat_lyrics_online
+            file = open("database.txt", 'w', encoding='utf8')
+            file.write(json.dumps(database, ensure_ascii=False, indent=4))
+            file.close()
+            begin_download(database_delta)
+            
+    else:
+        database["count"] = cat_lyrics_online
+        file = open("database.txt", 'w', encoding='utf8')
+        file.write(json.dumps(database, ensure_ascii=False, indent=4))
+        file.close()
+        begin_download(database["count"])
+
+def get_hash(text):
+    return hashlib.md5(text.encode('utf8')).hexdigest()
+    
+def clean_database():
+    #https://github.com/kylemcdonald/gpt-2-poetry
+    file = open("database.txt", 'r', encoding='utf8')
+    database = json.load(file)
+    file.close()
+    cats = database["links"]
+    try:
+        os.mkdir("output")
+    except OSError:
+        print("Creation of the directory failed")
+        print("It probably already exists")
+        pass
+    
+    for cat in cats:
+        for song in cats[cat]:
+            print(song)
+            title = song["title"]
+            author = song["zang"]
+            lyrics = song["lyrics"]
+            
+            if not author: #TODO vervang author naar tekst or muziek als deze false is
+                continue
+            output_fn = 'output/' + get_hash(title + author) + '.txt'
+
+            with open(output_fn, 'w', encoding='utf8') as ff:
+                ff.write('\n'.join([title, author, lyrics]))
+
+
+download_database()
+clean_database()
