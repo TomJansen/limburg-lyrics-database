@@ -1,21 +1,20 @@
-import requests
-from bs4 import BeautifulSoup as bs
 import time
 import re
 import json
-
-
-#for ai training part:
 import hashlib
 import os
-import numpy as np
-import tensorflow as tf
-import model, sample, encoder
+
+import requests
+from bs4 import BeautifulSoup as bs
+
+#for ai training part:
+# import numpy as np
+# import tensorflow as tf
+# import model, sample, encoder
 
 baseurl = "http://limburgslied.nl"
 def check_number_of_lyrics_online():
-    url = "http://limburgslied.nl/glossary"
-    r = requests.get(url)
+    r = requests.get(baseurl+'/glossary')
     soup = bs(r.text, 'html.parser')
     numbers = soup.find_all("span", {"class": "views-summary views-summary-unformatted"})
     x = []
@@ -25,7 +24,51 @@ def check_number_of_lyrics_online():
         count = span.a.next_sibling.lstrip().rstrip().replace("(","").replace(")","")
         x.append({cat: [int(count), link]})
     return x
+
+def add_new_songs(database, cat_lyrics_online):
+    database_delta = [] # stores the categories with different amount of songs
+    temp_existing_cat_dict = {}
+    temp_online_cat_dict = {}
+
+    for existing_cat in database["count"]: #convert json to dict, so it is easier to handle
+        cat_name = list(existing_cat.keys())[0]
+        cat_number_local = existing_cat[cat_name][0] #the number of songs in a category
+        cat_link = existing_cat[cat_name][1]
+        temp_existing_cat_dict[cat_name] = (cat_number_local, cat_link)
+
+    for online_cat in cat_lyrics_online: #convert json to dict, so it is easier to handle
+        online_cat_name = list(online_cat.keys())[0]
+        cat_number_online = online_cat[online_cat_name][0] #the number of songs in a category
+        cat_link = online_cat[online_cat_name][1]
+        temp_online_cat_dict[online_cat_name] = (cat_number_online, cat_link)
     
+    for cat, value in temp_online_cat_dict.items(): #check for differences in the two dicts
+        if cat in temp_existing_cat_dict:
+            if temp_online_cat_dict[cat] > temp_existing_cat_dict[cat]:
+                print(f"Extra songs found in category: '{cat}'")
+                database_delta.append({cat: value})
+        else:
+            print(f"New category found: '{cat}'")
+            database_delta.append({cat: value})
+    if len(database_delta) == 0:
+        print("No new songs to download")
+        anws = input("Do you want to check the whole database? Type yes or no: ")
+        if anws == 'yes':
+            begin_download(cat_lyrics_online)
+        elif anws == 'no':
+            exit()
+        else:
+            print("Wrong anwser. Please type yes or no")
+            print("Exiting")
+            exit()
+    else:
+        print("Begin downloading of lyrics not already in database")
+        database["count"] = cat_lyrics_online
+        file = open("database.txt", 'w', encoding='utf8')
+        file.write(json.dumps(database, ensure_ascii=False, indent=4))
+        file.close()
+        begin_download(database_delta)
+        
 
 def replace_with_newlines(element):
     text = ''
@@ -46,7 +89,6 @@ def download_song_data(link, cat_name):
         database["links"] = {}
     if cat_name in database["links"]:
         for song in database["links"][cat_name]:
-            #print(database["links"][cat_name])
             if song["link"].strip() == link:
                 print("link", link, "al gedownload!")
                 return
@@ -96,7 +138,7 @@ def download_song_data(link, cat_name):
         "lyrics": lyrics,
         "link": link
     }
-    database["links"][cat_name].append(x)
+    database["links"][cat_name].append(x) #TODO insert new lyric alphabetically
     file = open("database.txt", 'w', encoding='utf8')
     file.write(json.dumps(database, ensure_ascii=False, indent=4))
     file.close()
@@ -107,38 +149,36 @@ def get_last_page_int(r):
     num = re.search("page=([0-9]*)", last_link).group(1)
     return int(num)
 
-def get_data_one_page_from_cat_link(r, cat_name, database):
+def get_data_one_page_from_cat_link(r, cat_name):
     soup = bs(r.text, 'html.parser')
     tbody = soup.find("tbody")
     links_raw = tbody.find_all('a')
     links = []
     for link in links_raw:
-        link  = baseurl+link['href']
+        link = baseurl + link['href']
         download_song_data(link, cat_name)
 
-def get_all_data_from_cat_link(link, cat_name, database):
+def get_all_data_from_cat_link(link, cat_name):
     r = requests.get(link)
-    get_data_one_page_from_cat_link(r, cat_name, database)
+    get_data_one_page_from_cat_link(r, cat_name)
     try:
-        last_page_int = get_last_page_int(r)
+        last_page_int = get_last_page_int(r) #TODO checken of dit niet +1 moet zijn
     except:
         return
-    print("page 1 of", str(last_page_int)+":")
+    print("page 1 of", str(last_page_int+1)+":")
     for n in range(1, last_page_int+1):
         time.sleep(1)
-        print("page", str(n+1), "of", str(last_page_int)+":")
+        print("page", str(n+1), "of", str(last_page_int+1)+":")
         full_url = link+"?page="+str(n)
         r = requests.get(full_url)
-        get_data_one_page_from_cat_link(r, cat_name, database)
+        get_data_one_page_from_cat_link(r, cat_name)
 
 def begin_download(categories):
-    #categories = database["count"]
-    data = []
     for cat in categories:
         cat_name = list(cat.keys())[0]
-        print("category", cat_name)
+        print(f"category '{cat_name}'")
         link = cat[cat_name][1]
-        get_all_data_from_cat_link(link, cat_name, database)
+        get_all_data_from_cat_link(link, cat_name)
         
 def download_database():
     cat_lyrics_online = check_number_of_lyrics_online()
@@ -149,27 +189,10 @@ def download_database():
         database = {}
     file.close()
     
-    if "count" in database: #check and only download the categories that have changed numbers. Converteren naar dict?
-        database_delta = []
-        for existing_cat in database["count"]:
-            cat_name = list(existing_cat.keys())[0]
-            cat_number_local = existing_cat[cat_name][1] #the number of songs in a category
-            for online_cat in cat_lyrics_online:
-                online_cat_name = list(online_cat.keys())[0]
-                if cat_name == online_cat_name:
-                    cat_number_online = online_cat[online_cat_name][1]
-                    if cat_number_local != cat_number_online:
-                        print("Extra songs found in category", cat_name)
-                        database_delta.append(online_cat)
-        if len(database_delta) != 0:
-            print("beginning download of song not already in database")
-            database["count"] = cat_lyrics_online
-            file = open("database.txt", 'w', encoding='utf8')
-            file.write(json.dumps(database, ensure_ascii=False, indent=4))
-            file.close()
-            begin_download(database_delta)
+    if "count" in database: #database exists, search for extra songs
+        add_new_songs(database, cat_lyrics_online)
             
-    else:
+    else: #database does not exist, download everything. But still check for paritial database (done in begin_download())
         database["count"] = cat_lyrics_online
         file = open("database.txt", 'w', encoding='utf8')
         file.write(json.dumps(database, ensure_ascii=False, indent=4))
@@ -194,7 +217,6 @@ def clean_database():
     
     for cat in cats:
         for song in cats[cat]:
-            print(song)
             title = song["title"]
             author = song["zang"]
             lyrics = song["lyrics"]
@@ -205,7 +227,7 @@ def clean_database():
 
             with open(output_fn, 'w', encoding='utf8') as ff:
                 ff.write('\n'.join([title, author, lyrics]))
-
+    print("Individual file generation done.")
 
 download_database()
-clean_database()
+#clean_database()
