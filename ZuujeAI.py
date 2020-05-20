@@ -207,6 +207,7 @@ def clean_lyrics(lyrics):
     lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'") #standaard quotes (geen utf-8 shit)
     lyrics = re.sub('(?![^\d])\.(?=[^\.\n])', '.\n', lyrics) #fix: newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
     lyrics = re.sub('\!(?=[^\!\n\W])', '!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
+    lyrics = re.sub('\ (?=!)','', lyrics)
     lyrics = lyrics.replace("Refrein :", "Refrein:")
     lyrics = re.sub('Refrein:(?=[^\n])', 'Refrein:\n', lyrics) #altijd newline na Refrein:
     lyrics = re.sub('(?!=[^\n])(?=Couplet)', '\n', lyrics) #altijd newline voor Couplet
@@ -261,7 +262,7 @@ def database_2_txt():
     print("File generation done.")
 
 
-def convert_to_pd(): #not used
+def convert_to_pd():
     import pandas as pd
     dfs = []
     dfs.append(pd.read_csv("output.csv", sep='\t'))
@@ -273,7 +274,7 @@ def convert_to_pd(): #not used
     pd.DataFrame({"lyrics": df['text']})\
         .to_csv(os.path.join('content', 'lyrics.csv'), index=False)
 
-def train_data(): #not used (yet)
+def train_data():
     import gpt_2_simple as gpt2
     gpt2.download_gpt2(model_name="124M")
     learning_rate = 0.0001
@@ -337,5 +338,5 @@ def generate_text():
 #download_database()
 #database_2_csv()
 database_2_txt()
-if __name__ == '__main__':
-    train_data_2()
+#if __name__ == '__main__':
+#    train_data_2()
