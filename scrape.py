@@ -7,11 +7,6 @@ import os
 import requests
 from bs4 import BeautifulSoup as bs
 
-#for ai training part:
-# import numpy as np
-# import tensorflow as tf
-# import model, sample, encoder
-
 baseurl = "http://limburgslied.nl"
 def check_number_of_lyrics_online():
     r = requests.get(baseurl+'/glossary')
@@ -238,7 +233,7 @@ def convert_to_pd():
     pd.DataFrame({"lyrics": df['text']})\
         .to_csv(os.path.join('content', 'lyrics.csv'), index=False)
 
-def train_data():
+def train_data(): #(nog) niet gebruikt
     import gpt_2_simple as gpt2
     gpt2.download_gpt2(model_name="124M")
     learning_rate = 0.0001
@@ -297,9 +292,8 @@ def train_data_2():
     # Generate text from it!
     ai.generate(10, prompt="ROMEO:")
 
-#download_database()
-#database_2_csv()
-#convert_to_pd()
-#train_data()
+#download_database() #alleen gebruiken als je wilt scrapen!
+database_2_csv()
+convert_to_pd()
 if __name__ == '__main__':
     train_data_2()
