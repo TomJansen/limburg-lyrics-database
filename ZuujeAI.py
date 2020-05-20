@@ -262,7 +262,7 @@ def database_2_txt():
     print("File generation done.")
 
 
-def convert_to_pd():
+def convert_to_pd(): #not used
     import pandas as pd
     dfs = []
     dfs.append(pd.read_csv("output.csv", sep='\t'))
@@ -274,7 +274,7 @@ def convert_to_pd():
     pd.DataFrame({"lyrics": df['text']})\
         .to_csv(os.path.join('content', 'lyrics.csv'), index=False)
 
-def train_data():
+def train_data(): #not used
     import gpt_2_simple as gpt2
     gpt2.download_gpt2(model_name="124M")
     learning_rate = 0.0001
@@ -299,8 +299,8 @@ def train_data():
         print(res)
         print('\n -------//------ \n')
 
-def train_data_2():
-    # The name of the downloaded Shakespeare text for training
+def train_data_2(cpu_training):
+    # The name of the text for training
     file_name = "lyrics.txt"
 
     # Train a custom BPE Tokenizer on the downloaded text
@@ -312,10 +312,11 @@ def train_data_2():
 
     # GPT2ConfigCPU is a mini variant of GPT-2 optimized for CPU-training
     # e.g. the # of input tokens here is 64 vs. 1024 for base GPT-2.
-    config = GPT2ConfigCPU()
-
-    # Instantiate aitextgen using the created tokenizer and config
-    ai = aitextgen(vocab_file=vocab_file, merges_file=merges_file, config=config)
+    if cpu_training:
+        config = GPT2ConfigCPU()
+        ai = aitextgen(vocab_file=vocab_file, merges_file=merges_file, config=config)
+    else: #GPU training, 548M GPT-2 model automatically downloaded
+        ai = aitextgen(vocab_file=vocab_file, merges_file=merges_file)
 
     # You can build datasets for training by creating TokenDatasets,
     # which automatically processes the dataset with the appropriate size.
@@ -328,15 +329,9 @@ def train_data_2():
     # Generate text from it!
     ai.generate(10)
 
-def generate_text():
-    from aitextgen import aitextgen
-    ai = aitextgen(model="trained_model/pytorch_model.bin", config="trained_model/config.json")
-
-    ai.generate(10)
-    #ai.generate_to_file(n=10, prompt="I believe in unicorns because", max_length=100, temperature=1.2)
-
+cpu_training = False
 #download_database()
 #database_2_csv()
 database_2_txt()
-#if __name__ == '__main__':
-#    train_data_2()
+if __name__ == '__main__':
+    train_data_2()
