@@ -7,6 +7,11 @@ import os
 import requests
 from bs4 import BeautifulSoup as bs
 
+from aitextgen.TokenDataset import TokenDataset
+from aitextgen.tokenizers import train_tokenizer
+from aitextgen.utils import GPT2ConfigCPU
+from aitextgen import aitextgen
+
 baseurl = "http://limburgslied.nl"
 def check_number_of_lyrics_online():
     r = requests.get(baseurl+'/glossary')
@@ -197,6 +202,19 @@ def download_database():
 def get_hash(text):
     return hashlib.md5(text.encode('utf8')).hexdigest()
 
+
+def clean_lyrics(lyrics):
+    lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'") #standaard quotes (geen utf-8 shit)
+    lyrics = re.sub('(?![^\d])\.(?=[^\.\n])', '.\n', lyrics) #fix: newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
+    lyrics = re.sub('\!(?=[^\!\n\W])', '!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
+    lyrics = lyrics.replace("Refrein :", "Refrein:")
+    lyrics = re.sub('Refrein:(?=[^\n])', 'Refrein:\n', lyrics) #altijd newline na Refrein:
+    lyrics = re.sub('(?!=[^\n])(?=Couplet)', '\n', lyrics) #altijd newline voor Couplet
+    lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet
+    lyrics = lyrics.replace('…','')
+
+    return lyrics
+
 def database_2_csv():
     '''Genereerd tsv bestand'''
     #https://github.com/kylemcdonald/gpt-2-poetry TODO
@@ -214,14 +232,36 @@ def database_2_csv():
             lyrics = song["lyrics"]
             lyrics=lyrics.replace('\r', '').replace('\t', ' ')
 
-            if not author: #TODO vervang author naar tekst or muziek als deze false is
-                continue
+            #if not author: #TODO vervang author naar tekst or muziek als deze false is
+            #    continue
             songString = f"{author}\t{title}\t\"{lyrics}\n\n\"\n"
             with open("output.csv", 'a', encoding='utf8') as csvFile:
                 csvFile.write(songString)
     print("File generation done.")
 
-def convert_to_pd():
+def database_2_txt():
+    import re
+    '''Genereerd bestand met alleen maak lyrics'''
+    #https://github.com/kylemcdonald/gpt-2-poetry TODO
+    file = open("database.txt", 'r', encoding='utf8')
+    database = json.load(file)
+    file.close()
+    cats = database["links"]
+
+    for cat in cats:
+        for song in cats[cat]:
+            #author = song["zang"]
+            #title = song["title"]
+            lyrics = song["lyrics"]
+            lyrics = clean_lyrics(lyrics)
+
+            with open("lyrics.txt", 'a', encoding='utf8') as csvFile:
+                csvFile.write(lyrics)
+                csvFile.write('\n\n')
+    print("File generation done.")
+
+
+def convert_to_pd(): #not used
     import pandas as pd
     dfs = []
     dfs.append(pd.read_csv("output.csv", sep='\t'))
@@ -233,7 +273,7 @@ def convert_to_pd():
     pd.DataFrame({"lyrics": df['text']})\
         .to_csv(os.path.join('content', 'lyrics.csv'), index=False)
 
-def train_data(): #(nog) niet gebruikt
+def train_data(): #not used (yet)
     import gpt_2_simple as gpt2
     gpt2.download_gpt2(model_name="124M")
     learning_rate = 0.0001
@@ -259,13 +299,8 @@ def train_data(): #(nog) niet gebruikt
         print('\n -------//------ \n')
 
 def train_data_2():
-    from aitextgen.TokenDataset import TokenDataset
-    from aitextgen.tokenizers import train_tokenizer
-    from aitextgen.utils import GPT2ConfigCPU
-    from aitextgen import aitextgen
-
     # The name of the downloaded Shakespeare text for training
-    file_name = "content/lyrics.csv"
+    file_name = "lyrics.txt"
 
     # Train a custom BPE Tokenizer on the downloaded text
     # This will save two files: aitextgen-vocab.json and aitextgen-merges.txt,
@@ -287,13 +322,20 @@ def train_data_2():
 
     # Train the model! It will save pytorch_model.bin periodically and after completion.
     # On a 2016 MacBook Pro, this took ~25 minutes to run.
-    ai.train(data, batch_size=16, num_steps=5000)
+    ai.train(data, batch_size=16, num_steps=6000)
 
     # Generate text from it!
-    ai.generate(10, prompt="ROMEO:")
+    ai.generate(10)
 
-#download_database() #alleen gebruiken als je wilt scrapen!
-database_2_csv()
-convert_to_pd()
+def generate_text():
+    from aitextgen import aitextgen
+    ai = aitextgen(model="trained_model/pytorch_model.bin", config="trained_model/config.json")
+
+    ai.generate(10)
+    #ai.generate_to_file(n=10, prompt="I believe in unicorns because", max_length=100, temperature=1.2)
+
+#download_database()
+#database_2_csv()
+database_2_txt()
 if __name__ == '__main__':
     train_data_2()
