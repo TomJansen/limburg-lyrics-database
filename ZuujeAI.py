@@ -334,4 +334,4 @@ cpu_training = False
 #database_2_csv()
 database_2_txt()
 if __name__ == '__main__':
-    train_data_2()
+    train_data_2(cpu_training)
