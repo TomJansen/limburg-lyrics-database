@@ -203,12 +203,16 @@ def get_hash(text):
     return hashlib.md5(text.encode('utf8')).hexdigest()
 
 
-def clean_lyrics(lyrics):
+def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is je vriend
     lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'") #standaard quotes (geen utf-8 shit)
     lyrics = re.sub('(?![^\d])\.(?=[^\.\n])', '.\n', lyrics) #fix: newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
     lyrics = re.sub('\!(?=[^\!\n\W])', '!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
     lyrics = re.sub('\ (?=!)','', lyrics)
+    lyrics = re.sub('\ (?=\?)','', lyrics)
     lyrics = lyrics.replace("Refrein :", "Refrein:")
+    lyrics = lyrics.replace("Couplet :", "Couplet:")
+    lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
+    lyrics = re.sub('(?<=(Refrein|Couplet))(?!(:|\ \d))', ':', lyrics) #altijd ':' na Refrein of Couplet behalve bij ':' of een spatie + cijfer
     lyrics = re.sub('Refrein:(?=[^\n])', 'Refrein:\n', lyrics) #altijd newline na Refrein:
     lyrics = re.sub('(?!=[^\n])(?=Couplet)', '\n', lyrics) #altijd newline voor Couplet
     lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet
