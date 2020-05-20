@@ -333,9 +333,10 @@ def train_data_2(cpu_training):
     # Generate text from it!
     ai.generate(10)
 
-cpu_training = False
+cpu_training = True
 #download_database()
 #database_2_csv()
-database_2_txt()
 if __name__ == '__main__':
+    if not os.path.isfile("./lyrics.txt"):
+        database_2_txt()
     train_data_2(cpu_training)
