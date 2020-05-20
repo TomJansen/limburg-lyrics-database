@@ -246,13 +246,18 @@ def database_2_csv():
 
 def database_2_txt():
     import re
-    '''Genereerd bestand met alleen maak lyrics'''
+    '''Genereerd bestand met alleen lyrics'''
     #https://github.com/kylemcdonald/gpt-2-poetry TODO
     file = open("database.txt", 'r', encoding='utf8')
     database = json.load(file)
     file.close()
     cats = database["links"]
-
+    
+    try: #TODO lelijk maar het werkt
+        os.remove("lyrics.txt")
+    except:
+        pass
+    
     for cat in cats:
         for song in cats[cat]:
             #author = song["zang"]
