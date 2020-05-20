@@ -41,7 +41,7 @@ def add_new_songs(database, cat_lyrics_online):
         cat_number_online = online_cat[online_cat_name][0] #the number of songs in a category
         cat_link = online_cat[online_cat_name][1]
         temp_online_cat_dict[online_cat_name] = (cat_number_online, cat_link)
-    
+
     for cat, value in temp_online_cat_dict.items(): #check for differences in the two dicts
         if cat in temp_existing_cat_dict:
             if temp_online_cat_dict[cat] > temp_existing_cat_dict[cat]:
@@ -68,7 +68,7 @@ def add_new_songs(database, cat_lyrics_online):
         file.write(json.dumps(database, ensure_ascii=False, indent=4))
         file.close()
         begin_download(database_delta)
-        
+
 
 def replace_with_newlines(element):
     text = ''
@@ -78,7 +78,7 @@ def replace_with_newlines(element):
         elif elem.name == 'br':
             text += '\n'
     return text
-    
+
 def download_song_data(link, cat_name):
     file = open("database.txt", 'r', encoding='utf8')
     database = json.load(file)
@@ -92,7 +92,7 @@ def download_song_data(link, cat_name):
             if song["link"].strip() == link:
                 print("link", link, "al gedownload!")
                 return
-        print("downloading", link) 
+        print("downloading", link)
     else:
         database["links"][cat_name] = []
 
@@ -127,7 +127,7 @@ def download_song_data(link, cat_name):
         lyrics = replace_with_newlines(soup.find("div", {"class": "field field-name-body field-type-text-with-summary field-label-hidden"})).lstrip().rstrip()
     except:
         lyrics = False
-    
+
     x = {
         "title": title,
         "tekst": tekst,
@@ -179,7 +179,7 @@ def begin_download(categories):
         print(f"category '{cat_name}'")
         link = cat[cat_name][1]
         get_all_data_from_cat_link(link, cat_name)
-        
+
 def download_database():
     cat_lyrics_online = check_number_of_lyrics_online()
     file = open("database.txt", 'r', encoding='utf8')
@@ -188,10 +188,10 @@ def download_database():
     except:
         database = {}
     file.close()
-    
+
     if "count" in database: #database exists, search for extra songs
         add_new_songs(database, cat_lyrics_online)
-            
+
     else: #database does not exist, download everything. But still check for paritial database (done in begin_download())
         database["count"] = cat_lyrics_online
         file = open("database.txt", 'w', encoding='utf8')
@@ -201,33 +201,105 @@ def download_database():
 
 def get_hash(text):
     return hashlib.md5(text.encode('utf8')).hexdigest()
-    
-def clean_database():
-    #https://github.com/kylemcdonald/gpt-2-poetry
+
+def database_2_csv():
+    '''Genereerd tsv bestand'''
+    #https://github.com/kylemcdonald/gpt-2-poetry TODO
     file = open("database.txt", 'r', encoding='utf8')
     database = json.load(file)
     file.close()
     cats = database["links"]
-    try:
-        os.mkdir("output")
-    except OSError:
-        print("Creation of the directory failed")
-        print("It probably already exists")
-        pass
-    
+
+    with open("output.csv", 'a', encoding='utf8') as csvFile:
+        csvFile.write("author\tsong\ttext\n")
     for cat in cats:
         for song in cats[cat]:
-            title = song["title"]
             author = song["zang"]
+            title = song["title"]
             lyrics = song["lyrics"]
-            
+            lyrics=lyrics.replace('\r', '').replace('\t', ' ')
+
             if not author: #TODO vervang author naar tekst or muziek als deze false is
                 continue
-            output_fn = 'output/' + get_hash(title + author) + '.txt'
+            songString = f"{author}\t{title}\t\"{lyrics}\n\n\"\n"
+            with open("output.csv", 'a', encoding='utf8') as csvFile:
+                csvFile.write(songString)
+    print("File generation done.")
 
-            with open(output_fn, 'w', encoding='utf8') as ff:
-                ff.write('\n'.join([title, author, lyrics]))
-    print("Individual file generation done.")
+def convert_to_pd():
+    import pandas as pd
+    dfs = []
+    dfs.append(pd.read_csv("output.csv", sep='\t'))
+    df = pd.concat(dfs).reset_index(drop=True)
+    print(df)
+    if not os.path.exists('content'):
+        os.makedirs('content')
 
-download_database()
-#clean_database()
+    pd.DataFrame({"lyrics": df['text']})\
+        .to_csv(os.path.join('content', 'lyrics.csv'), index=False)
+
+def train_data():
+    import gpt_2_simple as gpt2
+    gpt2.download_gpt2(model_name="124M")
+    learning_rate = 0.0001
+    optimizer = 'adam' # adam or sgd
+    batch_size = 1
+    model_name = "124M" # has to match one downloaded locally
+    sess = gpt2.start_tf_sess()
+
+    gpt2.finetune(sess, 'content/lyrics.csv', model_name=model_name,sample_every=50,same_every=50, print_every=10, learning_rate=learning_rate, batch_size=batch_size,restore_from='latest',steps=500)
+
+    lst_results=gpt2.generate(
+        sess,
+        prefix="<|startoftext|>",
+        nsamples=10,
+        temperature=0.8, # change me
+        top_p=0.9, # Change me
+        return_as_list=True,
+        truncate="<|endoftext|>",
+        include_prefix=True
+    )
+    for res in lst_results:
+        print(res)
+        print('\n -------//------ \n')
+
+def train_data_2():
+    from aitextgen.TokenDataset import TokenDataset
+    from aitextgen.tokenizers import train_tokenizer
+    from aitextgen.utils import GPT2ConfigCPU
+    from aitextgen import aitextgen
+
+    # The name of the downloaded Shakespeare text for training
+    file_name = "content/lyrics.csv"
+
+    # Train a custom BPE Tokenizer on the downloaded text
+    # This will save two files: aitextgen-vocab.json and aitextgen-merges.txt,
+    # which are needed to rebuild the tokenizer.
+    train_tokenizer(file_name)
+    vocab_file = "aitextgen-vocab.json"
+    merges_file = "aitextgen-merges.txt"
+
+    # GPT2ConfigCPU is a mini variant of GPT-2 optimized for CPU-training
+    # e.g. the # of input tokens here is 64 vs. 1024 for base GPT-2.
+    config = GPT2ConfigCPU()
+
+    # Instantiate aitextgen using the created tokenizer and config
+    ai = aitextgen(vocab_file=vocab_file, merges_file=merges_file, config=config)
+
+    # You can build datasets for training by creating TokenDatasets,
+    # which automatically processes the dataset with the appropriate size.
+    data = TokenDataset(file_name, vocab_file=vocab_file, merges_file=merges_file, block_size=64)
+
+    # Train the model! It will save pytorch_model.bin periodically and after completion.
+    # On a 2016 MacBook Pro, this took ~25 minutes to run.
+    ai.train(data, batch_size=16, num_steps=5000)
+
+    # Generate text from it!
+    ai.generate(10, prompt="ROMEO:")
+
+#download_database()
+#database_2_csv()
+#convert_to_pd()
+#train_data()
+if __name__ == '__main__':
+    train_data_2()
