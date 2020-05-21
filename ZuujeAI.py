@@ -204,19 +204,29 @@ def get_hash(text):
 
 
 def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is je vriend
-    lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'") #standaard quotes (geen utf-8 shit)
-    lyrics = re.sub('(?![^\d])\.(?=[^\.\n])', '.\n', lyrics) #fix: newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
-    lyrics = re.sub('\!(?=[^\!\n\W])', '!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
+    lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'").replace('´',"'").replace('‘',"'").replace('…','.') #standaard quotes, geen utf-8 shit
+    lyrics = lyrics.replace('O.K', 'OK') #afkortingen fixen voor zinnen
+    lyrics = lyrics.replace('o.k', 'OK')
+    lyrics = lyrics.replace('K.O', 'ko')
+    lyrics = lyrics.replace('A.O.W', 'AOW')
+    lyrics = re.sub('(?<!\d)\.(?=[^\.\n!?\'":\)])', '.\n', lyrics) #newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
+    lyrics = re.sub('\ *(?=\.)', '.', lyrics) # geen spatie voor punt
+    lyrics = re.sub('\.{1,}', '', lyrics) #verwijder alle punten
+    lyrics = re.sub('\!(?=[^\!\n\W])', '?!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
     lyrics = re.sub('\ (?=!)','', lyrics)
     lyrics = re.sub('\ (?=\?)','', lyrics)
+    lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
+    lyrics = re.sub('^\ *', '', lyrics) # geen spatie als begin van een zin
+    lyrics = lyrics.replace("REFREIN","Refrein")
     lyrics = lyrics.replace("Refrein :", "Refrein:")
     lyrics = lyrics.replace("Couplet :", "Couplet:")
     lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
     lyrics = re.sub('(?<=(Refrein|Couplet))(?!(:|\ \d))', ':', lyrics) #altijd ':' na Refrein of Couplet behalve bij ':' of een spatie + cijfer
+    lyrics = re.sub('(?<=[^\n])Refrein:', '\nRefrein:', lyrics) #altijd newline voor Refrein:
     lyrics = re.sub('Refrein:(?=[^\n])', 'Refrein:\n', lyrics) #altijd newline na Refrein:
     lyrics = re.sub('(?!=[^\n])(?=Couplet)', '\n', lyrics) #altijd newline voor Couplet
-    lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet
-    lyrics = lyrics.replace('…','')
+    lyrics = re.sub('(?<=Couplet:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
+    lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
 
     return lyrics
 
@@ -253,11 +263,14 @@ def database_2_txt():
     file.close()
     cats = database["links"]
 
+    blacklistFile = open("blacklist.txt", 'r').readlines()
     for cat in cats:
         for song in cats[cat]:
             #author = song["zang"]
             #title = song["title"]
             lyrics = song["lyrics"]
+            if song["link"] in blacklistFile:
+                continue #skip als link in blacklist
             lyrics = clean_lyrics(lyrics)
 
             with open("lyrics.txt", 'a', encoding='utf8') as csvFile:
@@ -328,7 +341,7 @@ def train_data_2(cpu_training):
 
     # Train the model! It will save pytorch_model.bin periodically and after completion.
     # On a 2016 MacBook Pro, this took ~25 minutes to run.
-    ai.train(data, batch_size=16, num_steps=6000)
+    ai.train(data, batch_size=16, num_steps=25000)
 
     # Generate text from it!
     ai.generate(10)
@@ -339,4 +352,5 @@ cpu_training = True
 if __name__ == '__main__':
     if not os.path.isfile("./lyrics.txt"):
         database_2_txt()
+    exit()
     train_data_2(cpu_training)
