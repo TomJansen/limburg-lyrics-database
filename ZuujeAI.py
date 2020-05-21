@@ -352,5 +352,4 @@ cpu_training = True
 if __name__ == '__main__':
     if not os.path.isfile("./lyrics.txt"):
         database_2_txt()
-    exit()
     train_data_2(cpu_training)
