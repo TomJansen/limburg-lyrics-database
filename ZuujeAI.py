@@ -212,15 +212,15 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = lyrics.replace('C.D', 'CD')
     lyrics = re.sub('(?<!\d)\.(?=[^\.\n!?\'":\)])', '.\n', lyrics) #newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
     lyrics = re.sub('\ *(?=\.)', '.', lyrics) # geen spatie voor punt
-    lyrics = re.sub('\.{1,}', '', lyrics) #verwijder alle punten
+    lyrics = re.sub('\.+', '', lyrics) #verwijderd alle punten
     lyrics = re.sub('(?<=\,)\ (?=[^\n])', '\n', lyrics) #spatie na comma altijd newline
     lyrics = re.sub('(?<=\,)(?=\w)', '\n', lyrics) #altijd newline na comma voor woord
     lyrics = re.sub('\!(?=[^\!\n\W])', '?!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
     lyrics = re.sub('\ (?=!)','', lyrics)
     lyrics = re.sub('\ (?=\?)','', lyrics)
     lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
-    lyrics = lyrics.replace("REFREIN","Refrein")
-    lyrics = lyrics.replace("refrein","Refrein")
+    lyrics = re.sub('refrein', 'Refrein', lyrics, flags=re.IGNORECASE)
+    lyrics = re.sub('couplet', 'Couplet', lyrics, flags=re.IGNORECASE)
     lyrics = lyrics.replace("Refrein :", "Refrein:")
     lyrics = lyrics.replace("Couplet :", "Couplet:")
     lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
@@ -231,6 +231,7 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('(?<=Couplet:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('^\W+(?<!=\n)', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels)
+    lyrics = re.sub('\ {2,}', ' ', lyrics) #verwijder meer dan 1 spatie achterelkaar
 
     return lyrics
 
