@@ -215,7 +215,7 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('\ (?=(\!|\?))', '', lyrics) # geen spatie voor vraag/uitroepteken
     lyrics = lyrics.replace("\n!","!") #verwijder newline voor uitroepteken
     lyrics = lyrics.replace("\n?","?") #verwijder newline voor vraagteken
-    lyrics = re.sub('(?<=\!|\?)(?=[^\n\?\!])', '\n', lyrics) #altijd newline na vraag/uitroepteken, behalve na vraag/uitroepteken of newline
+    lyrics = re.sub('(?<=\!|\?)(?=[^\n\?\!\'])', '\n', lyrics) #altijd newline na vraag/uitroepteken, behalve na vraag/uitroepteken, newline of '
     lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
     lyrics = re.sub('refrein', 'Refrein', lyrics, flags=re.IGNORECASE)
     lyrics = re.sub('couplet', 'Couplet', lyrics, flags=re.IGNORECASE)
