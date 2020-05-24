@@ -221,6 +221,7 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('couplet', 'Couplet', lyrics, flags=re.IGNORECASE)
     lyrics = re.sub('koeplet', 'Couplet', lyrics, flags=re.IGNORECASE)
     lyrics = re.sub('refreng', 'Refrein', lyrics, flags=re.IGNORECASE)
+    lyrics = re.sub('refring', 'Refrein', lyrics, flags=re.IGNORECASE)
     lyrics = lyrics.replace("Refrein :", "Refrein:")
     lyrics = lyrics.replace("Couplet :", "Couplet:")
     lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
