@@ -209,6 +209,7 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = lyrics.replace('o.k', 'OK')
     lyrics = lyrics.replace('K.O', 'ko')
     lyrics = lyrics.replace('A.O.W', 'AOW')
+    lyrics = lyrics.replace('C.D', 'CD')
     lyrics = re.sub('(?<!\d)\.(?=[^\.\n!?\'":\)])', '.\n', lyrics) #newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
     lyrics = re.sub('\ *(?=\.)', '.', lyrics) # geen spatie voor punt
     lyrics = re.sub('\.{1,}', '', lyrics) #verwijder alle punten
@@ -263,7 +264,7 @@ def database_2_txt():
     file.close()
     cats = database["links"]
 
-    blacklistFile = open("blacklist.txt", 'r').readlines()
+    blacklistFile = open("blacklist.txt", 'r').read().splitlines()
     for cat in cats:
         for song in cats[cat]:
             #author = song["zang"]
@@ -352,4 +353,5 @@ cpu_training = True
 if __name__ == '__main__':
     if not os.path.isfile("./lyrics.txt"):
         database_2_txt()
+    exit()
     train_data_2(cpu_training)
