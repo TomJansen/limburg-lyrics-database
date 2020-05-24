@@ -205,7 +205,7 @@ def get_hash(text):
 
 def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is je vriend
     lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'").replace('´',"'").replace('‘',"'").replace('`',"'").replace('…','.') #standaard quotes, geen utf-8 shit
-    lyrics = re.sub('(?<=[A-Z])\.(?=[A-Z])','', lyrics) #geen punten in afkortingen
+    lyrics = re.sub('(?<=[A-Z])\.(?=[A-Z.-])','', lyrics) #geen punten in afkortingen
     lyrics = re.sub('(?<!\d)\.(?=[^\.\n!?\'":\)])', '.\n', lyrics) #newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
     lyrics = re.sub('\ *(?=\.)', '.', lyrics) # geen spatie voor punt
     lyrics = re.sub('\.+', '', lyrics) #verwijderd alle punten
