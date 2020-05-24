@@ -230,8 +230,8 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('(?!=[^\n])(?=Couplet)', '\n', lyrics) #altijd newline voor Couplet
     lyrics = re.sub('(?<=Couplet:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
-    lyrics = re.sub('^\W+(?<!=\n)', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels)
     lyrics = re.sub('\ {2,}', ' ', lyrics) #verwijder meer dan 1 spatie achterelkaar
+    lyrics = re.sub('(?<!=\n)^[^a-zA-Z0-9_\']+', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels)
 
     return lyrics
 
