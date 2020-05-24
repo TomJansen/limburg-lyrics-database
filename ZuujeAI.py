@@ -217,13 +217,10 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = lyrics.replace("\n?","?") #verwijder newline voor vraagteken
     lyrics = re.sub('(?<=\!|\?)(?=[^\n\?\!\'])', '\n', lyrics) #altijd newline na vraag/uitroepteken, behalve na vraag/uitroepteken, newline of '
     lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
-    lyrics = re.sub('refrein', 'Refrein', lyrics, flags=re.IGNORECASE)
-    lyrics = re.sub('couplet', 'Couplet', lyrics, flags=re.IGNORECASE)
-    lyrics = re.sub('koeplet', 'Couplet', lyrics, flags=re.IGNORECASE)
-    lyrics = re.sub('refreng', 'Refrein', lyrics, flags=re.IGNORECASE)
-    lyrics = re.sub('refring', 'Refrein', lyrics, flags=re.IGNORECASE)
-    lyrics = lyrics.replace("Refrein :", "Refrein:")
-    lyrics = lyrics.replace("Couplet :", "Couplet:")
+
+    lyrics = re.sub('refr(ei|e|i)ng?(\ ?:)?', 'Refrein', lyrics, flags=re.IGNORECASE) #vervang refrein/refreng/refring naar Refrein
+    lyrics = re.sub('(k|c)o(e|u)plet(\ ?:)?', 'Couplet', lyrics, flags=re.IGNORECASE) #vervang couplet/koeplet naar Couplet
+
     lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
     lyrics = re.sub('(?<=(Refrein|Couplet))(?!(:|\ \d))', ':', lyrics) #altijd ':' na Refrein of Couplet behalve bij ':' of een spatie + cijfer
     lyrics = re.sub('(?<=[^\n])Refrein:', '\nRefrein:', lyrics) #altijd newline voor Refrein:
