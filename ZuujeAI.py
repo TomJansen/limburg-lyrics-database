@@ -213,12 +213,14 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('(?<!\d)\.(?=[^\.\n!?\'":\)])', '.\n', lyrics) #newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
     lyrics = re.sub('\ *(?=\.)', '.', lyrics) # geen spatie voor punt
     lyrics = re.sub('\.{1,}', '', lyrics) #verwijder alle punten
+    lyrics = re.sub('(?<=\,)\ (?=[^\n])', '\n', lyrics) #spatie na comma altijd newline
+    lyrics = re.sub('(?<=\,)(?=\w)', '\n', lyrics) #altijd newline na comma voor woord
     lyrics = re.sub('\!(?=[^\!\n\W])', '?!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
     lyrics = re.sub('\ (?=!)','', lyrics)
     lyrics = re.sub('\ (?=\?)','', lyrics)
     lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
-    lyrics = re.sub('^\ *', '', lyrics) # geen spatie als begin van een zin
     lyrics = lyrics.replace("REFREIN","Refrein")
+    lyrics = lyrics.replace("refrein","Refrein")
     lyrics = lyrics.replace("Refrein :", "Refrein:")
     lyrics = lyrics.replace("Couplet :", "Couplet:")
     lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
@@ -228,6 +230,7 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('(?!=[^\n])(?=Couplet)', '\n', lyrics) #altijd newline voor Couplet
     lyrics = re.sub('(?<=Couplet:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
+    lyrics = re.sub('^\W+(?<!=\n)', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels)
 
     return lyrics
 
@@ -353,5 +356,4 @@ cpu_training = True
 if __name__ == '__main__':
     if not os.path.isfile("./lyrics.txt"):
         database_2_txt()
-    exit()
     train_data_2(cpu_training)
