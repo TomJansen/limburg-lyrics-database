@@ -204,7 +204,7 @@ def get_hash(text):
 
 
 def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is je vriend
-    lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'").replace('´',"'").replace('‘',"'").replace('…','.') #standaard quotes, geen utf-8 shit
+    lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'").replace('´',"'").replace('‘',"'").replace('`',"'").replace('…','.') #standaard quotes, geen utf-8 shit
     lyrics = re.sub('(?<=[A-Z])\.(?=[A-Z])','', lyrics) #geen punten in afkortingen
     lyrics = re.sub('(?<!\d)\.(?=[^\.\n!?\'":\)])', '.\n', lyrics) #newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
     lyrics = re.sub('\ *(?=\.)', '.', lyrics) # geen spatie voor punt
@@ -213,12 +213,14 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('\ +(?=,)','',lyrics) # geen spaties voor komma
     lyrics = re.sub('(?<=\,)\ (?=[^\n])', '\n', lyrics) #spatie na comma veranderen in newline
     lyrics = re.sub('(?<=\,)(?=\w)', '\n', lyrics) #altijd newline na komma voor woord
+    lyrics = lyrics.replace("\n!","!") #verwijder newline voor uitroepteken
     lyrics = re.sub('\!(?=[^\!\n\W])', '?!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
     lyrics = re.sub('\ (?=!)','', lyrics)
     lyrics = re.sub('\ (?=\?)','', lyrics)
     lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
     lyrics = re.sub('refrein', 'Refrein', lyrics, flags=re.IGNORECASE)
     lyrics = re.sub('couplet', 'Couplet', lyrics, flags=re.IGNORECASE)
+    lyrics = re.sub('koeplet', 'Couplet', lyrics, flags=re.IGNORECASE)
     lyrics = lyrics.replace("Refrein :", "Refrein:")
     lyrics = lyrics.replace("Couplet :", "Couplet:")
     lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
@@ -229,7 +231,7 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('(?<=Couplet:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('\ {2,}', ' ', lyrics) #verwijder meer dan 1 spatie achterelkaar
-    lyrics = re.sub('(?<!=\n)^[^a-zA-Z0-9_\']+', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels) TODO zin werkt niet bij spaties aan begin van zin
+    #lyrics = re.sub('(?<!=\n)^[^a-zA-Z0-9_\']+', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels) TODO zin werkt niet bij spaties aan begin van zin
     lyrics = re.sub('(?<=\n)\ +','',lyrics) # geen witregel begin van zin
 
     return lyrics
