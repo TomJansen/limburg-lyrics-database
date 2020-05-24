@@ -205,16 +205,14 @@ def get_hash(text):
 
 def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is je vriend
     lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'").replace('´',"'").replace('‘',"'").replace('…','.') #standaard quotes, geen utf-8 shit
-    lyrics = lyrics.replace('O.K', 'OK') #afkortingen fixen voor zinnen
-    lyrics = lyrics.replace('o.k', 'OK')
-    lyrics = lyrics.replace('K.O', 'ko')
-    lyrics = lyrics.replace('A.O.W', 'AOW')
-    lyrics = lyrics.replace('C.D', 'CD')
+    lyrics = re.sub('(?<=[A-Z])\.(?=[A-Z])','', lyrics) #geen punten in afkortingen
     lyrics = re.sub('(?<!\d)\.(?=[^\.\n!?\'":\)])', '.\n', lyrics) #newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
     lyrics = re.sub('\ *(?=\.)', '.', lyrics) # geen spatie voor punt
     lyrics = re.sub('\.+', '', lyrics) #verwijderd alle punten
-    lyrics = re.sub('(?<=\,)\ (?=[^\n])', '\n', lyrics) #spatie na comma altijd newline
-    lyrics = re.sub('(?<=\,)(?=\w)', '\n', lyrics) #altijd newline na comma voor woord
+
+    lyrics = re.sub('\ +(?=,)','',lyrics) # geen spaties voor komma
+    lyrics = re.sub('(?<=\,)\ (?=[^\n])', '\n', lyrics) #spatie na comma veranderen in newline
+    lyrics = re.sub('(?<=\,)(?=\w)', '\n', lyrics) #altijd newline na komma voor woord
     lyrics = re.sub('\!(?=[^\!\n\W])', '?!\n', lyrics) #altijd newline na uitroepteken, behalve na uitroepteken of newline
     lyrics = re.sub('\ (?=!)','', lyrics)
     lyrics = re.sub('\ (?=\?)','', lyrics)
@@ -231,7 +229,8 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('(?<=Couplet:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('\ {2,}', ' ', lyrics) #verwijder meer dan 1 spatie achterelkaar
-    lyrics = re.sub('(?<!=\n)^[^a-zA-Z0-9_\']+', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels)
+    lyrics = re.sub('(?<!=\n)^[^a-zA-Z0-9_\']+', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels) TODO zin werkt niet bij spaties aan begin van zin
+    lyrics = re.sub('(?<=\n)\ +','',lyrics) # geen witregel begin van zin
 
     return lyrics
 
