@@ -7,11 +7,6 @@ import os
 import requests
 from bs4 import BeautifulSoup as bs
 
-from aitextgen.TokenDataset import TokenDataset
-from aitextgen.tokenizers import train_tokenizer
-from aitextgen.utils import GPT2ConfigCPU
-from aitextgen import aitextgen
-
 baseurl = "http://limburgslied.nl"
 def check_number_of_lyrics_online():
     r = requests.get(baseurl+'/glossary')
@@ -70,15 +65,6 @@ def add_new_songs(database, cat_lyrics_online):
         begin_download(database_delta)
 
 
-def replace_with_newlines(element):
-    text = ''
-    for elem in element.recursiveChildGenerator():
-        if isinstance(elem, str):
-            text += elem.strip()
-        elif elem.name == 'br':
-            text += '\n'
-    return text
-
 def download_song_data(link, cat_name):
     file = open("database.txt", 'r', encoding='utf8')
     database = json.load(file)
@@ -124,7 +110,7 @@ def download_song_data(link, cat_name):
     except:
         plaats = False
     try:
-        lyrics = replace_with_newlines(soup.find("div", {"class": "field field-name-body field-type-text-with-summary field-label-hidden"})).lstrip().rstrip()
+        lyrics = soup.find("div", {"class": "field field-name-body field-type-text-with-summary field-label-hidden"}).text.replace('\t','').lstrip().rstrip()
     except:
         lyrics = False
 
@@ -182,12 +168,13 @@ def begin_download(categories):
 
 def download_database():
     cat_lyrics_online = check_number_of_lyrics_online()
-    file = open("database.txt", 'r', encoding='utf8')
     try:
-        database = json.load(file)
-    except:
+        file = open("database.txt", 'r', encoding='utf8')
+    except FileNotFoundError:
         database = {}
-    file.close()
+    else:
+        database = json.load(file)
+        file.close()
 
     if "count" in database: #database exists, search for extra songs
         add_new_songs(database, cat_lyrics_online)
@@ -284,44 +271,12 @@ def database_2_txt():
     print("File generation done.")
 
 
-def convert_to_pd(): #not used
-    import pandas as pd
-    dfs = []
-    dfs.append(pd.read_csv("output.csv", sep='\t'))
-    df = pd.concat(dfs).reset_index(drop=True)
-    print(df)
-    if not os.path.exists('content'):
-        os.makedirs('content')
-
-    pd.DataFrame({"lyrics": df['text']})\
-        .to_csv(os.path.join('content', 'lyrics.csv'), index=False)
-
-def train_data(): #not used
-    import gpt_2_simple as gpt2
-    gpt2.download_gpt2(model_name="124M")
-    learning_rate = 0.0001
-    optimizer = 'adam' # adam or sgd
-    batch_size = 1
-    model_name = "124M" # has to match one downloaded locally
-    sess = gpt2.start_tf_sess()
-
-    gpt2.finetune(sess, 'content/lyrics.csv', model_name=model_name,sample_every=50,same_every=50, print_every=10, learning_rate=learning_rate, batch_size=batch_size,restore_from='latest',steps=500)
-
-    lst_results=gpt2.generate(
-        sess,
-        prefix="<|startoftext|>",
-        nsamples=10,
-        temperature=0.8, # change me
-        top_p=0.9, # Change me
-        return_as_list=True,
-        truncate="<|endoftext|>",
-        include_prefix=True
-    )
-    for res in lst_results:
-        print(res)
-        print('\n -------//------ \n')
-
 def train_data_2(cpu_training):
+    from aitextgen.TokenDataset import TokenDataset
+    from aitextgen.tokenizers import train_tokenizer
+    from aitextgen.utils import GPT2ConfigCPU
+    from aitextgen import aitextgen
+    
     # The name of the text for training
     file_name = "lyrics.txt"
 
@@ -352,9 +307,9 @@ def train_data_2(cpu_training):
     ai.generate(10)
 
 cpu_training = True
-#download_database()
-#database_2_csv()
 if __name__ == '__main__':
+    download_database()
+    #database_2_csv()
     if not os.path.isfile("./lyrics.txt"):
         database_2_txt()
     train_data_2(cpu_training)
