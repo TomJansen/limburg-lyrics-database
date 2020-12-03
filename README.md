@@ -1,12 +1,9 @@
-# ZuujeAI
-Een AI om Limburgse (carnevals) nummers te generen
+# Limburg Lyrics Database
+A database containing over 9000 Dutch carnevals songs in the Limburgish (Limburgs) dialect. Used in the project [ZuujeAI](https://github.com/TomJansen/ZuujeAI).
 
-Gebruikt aitextgen.
-Voor windows, installeer eerst pytorch via https://pytorch.org/
-Dan ```pip install aitextgen```
-
-Getest met Python 3.7, 64 bits
+Tested with Python 3.7, 64 bits
 
 ## Licentie
-De teksten zijn verkrijgbaar Attribution-ShareAlike 3.0 Unported
-Zie ook http://limburgslied.nl/content/juridisch
+The songtexts are in the licence Attribution-ShareAlike 3.0 Unported.
+Code has the MIT licence
+See also http://limburgslied.nl/content/juridisch
