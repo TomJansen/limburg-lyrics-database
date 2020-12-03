@@ -7,11 +7,6 @@ import os
 import requests
 from bs4 import BeautifulSoup as bs
 
-from aitextgen.TokenDataset import TokenDataset
-from aitextgen.tokenizers import train_tokenizer
-from aitextgen.utils import GPT2ConfigCPU
-from aitextgen import aitextgen
-
 baseurl = "http://limburgslied.nl"
 def check_number_of_lyrics_online():
     r = requests.get(baseurl+'/glossary')
@@ -283,78 +278,7 @@ def database_2_txt():
                 csvFile.write('\n\n')
     print("File generation done.")
 
-
-def convert_to_pd(): #not used
-    import pandas as pd
-    dfs = []
-    dfs.append(pd.read_csv("output.csv", sep='\t'))
-    df = pd.concat(dfs).reset_index(drop=True)
-    print(df)
-    if not os.path.exists('content'):
-        os.makedirs('content')
-
-    pd.DataFrame({"lyrics": df['text']})\
-        .to_csv(os.path.join('content', 'lyrics.csv'), index=False)
-
-def train_data(): #not used
-    import gpt_2_simple as gpt2
-    gpt2.download_gpt2(model_name="124M")
-    learning_rate = 0.0001
-    optimizer = 'adam' # adam or sgd
-    batch_size = 1
-    model_name = "124M" # has to match one downloaded locally
-    sess = gpt2.start_tf_sess()
-
-    gpt2.finetune(sess, 'content/lyrics.csv', model_name=model_name,sample_every=50,same_every=50, print_every=10, learning_rate=learning_rate, batch_size=batch_size,restore_from='latest',steps=500)
-
-    lst_results=gpt2.generate(
-        sess,
-        prefix="<|startoftext|>",
-        nsamples=10,
-        temperature=0.8, # change me
-        top_p=0.9, # Change me
-        return_as_list=True,
-        truncate="<|endoftext|>",
-        include_prefix=True
-    )
-    for res in lst_results:
-        print(res)
-        print('\n -------//------ \n')
-
-def train_data_2(cpu_training):
-    # The name of the text for training
-    file_name = "lyrics.txt"
-
-    # Train a custom BPE Tokenizer on the downloaded text
-    # This will save two files: aitextgen-vocab.json and aitextgen-merges.txt,
-    # which are needed to rebuild the tokenizer.
-    train_tokenizer(file_name)
-    vocab_file = "aitextgen-vocab.json"
-    merges_file = "aitextgen-merges.txt"
-
-    # GPT2ConfigCPU is a mini variant of GPT-2 optimized for CPU-training
-    # e.g. the # of input tokens here is 64 vs. 1024 for base GPT-2.
-    if cpu_training:
-        config = GPT2ConfigCPU()
-        ai = aitextgen(vocab_file=vocab_file, merges_file=merges_file, config=config)
-    else: #GPU training, 548M GPT-2 model automatically downloaded
-        ai = aitextgen(vocab_file=vocab_file, merges_file=merges_file)
-
-    # You can build datasets for training by creating TokenDatasets,
-    # which automatically processes the dataset with the appropriate size.
-    data = TokenDataset(file_name, vocab_file=vocab_file, merges_file=merges_file, block_size=64)
-
-    # Train the model! It will save pytorch_model.bin periodically and after completion.
-    # On a 2016 MacBook Pro, this took ~25 minutes to run.
-    ai.train(data, batch_size=16, num_steps=25000)
-
-    # Generate text from it!
-    ai.generate(10)
-
-cpu_training = True
-#download_database()
-#database_2_csv()
 if __name__ == '__main__':
     if not os.path.isfile("./lyrics.txt"):
+    	download_database()
         database_2_txt()
-    train_data_2(cpu_training)
