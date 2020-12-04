@@ -277,13 +277,14 @@ def database_2_csv():
 
     blacklistFile = open("blacklist.txt", 'r').read().splitlines()
     with open("lyrics.csv", 'a', encoding='utf8') as csvFile:
-        csvFile.write("lyrics\n")
+        csvFile.write("artist,song,link,text\n")
     for cat in cats:
         for song in cats[cat]:
             author = song["zang"]
             title = song["title"]
+            link = song["link"]
             lyrics = song["lyrics"]
-            if song["link"] in blacklistFile:
+            if link in blacklistFile:
                 continue #skip als link in blacklist
             lyrics = clean_lyrics(lyrics).lower()
             #lyrics = re.sub('\n{2,}', '', lyrics)
@@ -291,7 +292,7 @@ def database_2_csv():
 
             #if not author: #TODO vervang author naar tekst or muziek als deze false is
             #    continue
-            songString = f"\"{lyrics}\n\n\"\n"
+            songString = f"{author},{title},{link},\"{lyrics}\n\n\"\n"
             with open("lyrics.csv", 'a', encoding='utf8') as csvFile:
                 csvFile.write(songString)
     print("File generation done.")
