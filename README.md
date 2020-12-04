@@ -31,5 +31,7 @@ Usage: `python .\count.py .\lyrics.txt`
 
 ## Licence
 The songtexts are in the licence Attribution-ShareAlike 3.0 Unported.
+
 Code in this repo is MIT licenced
+
 See also http://limburgslied.nl/content/juridisch
