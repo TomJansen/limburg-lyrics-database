@@ -3,6 +3,7 @@ import re
 import json
 import hashlib
 import os
+import unicodedata
 
 import requests
 from bs4 import BeautifulSoup as bs
@@ -47,15 +48,11 @@ def add_new_songs(database, cat_lyrics_online):
             database_delta.append({cat: value})
     if len(database_delta) == 0:
         print("No new songs to download")
-        anws = input("Do you want to check the whole database? Type yes or no: ")
-        if anws == 'yes':
+        anws = input("Do you want to check the whole database? y/n: ")
+        if anws == 'y':
             begin_download(cat_lyrics_online)
-        elif anws == 'no':
-            exit()
         else:
-            print("Wrong anwser. Please type yes or no")
-            print("Exiting")
-            exit()
+            return
     else:
         print("Begin downloading of lyrics not already in database")
         database["count"] = cat_lyrics_online
@@ -201,11 +198,41 @@ def get_hash(text):
 
 def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is je vriend
     #begin. Eerst van raw html naar text:
-    lyrics.replace('\n','').replace('\t', '').replace('<p>', '\n').replace('</p>', '\n').replace('<br/>', '\n') #newlines kunnen in de html kunnen zitten
+    lyrics = lyrics.replace('\n','').replace('\t', '').replace('<p>', '\n').replace('</p>', '\n').replace('<br/>', '\n') #newlines kunnen in de html kunnen zitten. Laatste is null space character
     lyricssoup = bs(lyrics, 'html.parser') #weer terug naar bs object om rest van de tags te filteren
     lyrics = lyricssoup.text.lstrip().rstrip() #newlines begin en eind van tekst weghalen
-    
-    lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'").replace('´',"'").replace('‘',"'").replace('`',"'").replace('…','') #standaard quotes, geen utf-8 shit
+
+    lyrics = unicodedata.normalize('NFC', lyrics) #non-standard chars to standard chars (UTF-8 null spaces etc)
+    unicode_replace_dict = { #replacement map
+	    '”': '"',
+	    '“': '"',
+	    '’': "'",
+	    '´': "'",
+	    '‘': "'",
+	    '`': "'",
+	    '‚': ',',
+	    '„': '"',
+	    '_': ' ',
+	    '—': '-',
+	    '–': '-',
+	    '•': '',
+	    '©': '',
+	    '¢': '\'',
+	    '|': '',
+	    '×': 'x',
+	    '\u2028': '\n',
+	    '\u00AD': '',
+	    '~': ' ',
+	    '{': '',
+	    '\\': '',
+	    '\u00A0': ' ',
+	    '\u00B2': '2',
+	    '\u2026': '...',
+	    'œ': 'oe',
+    }
+    for key, value in unicode_replace_dict.items():
+    	lyrics = lyrics.replace(key, value)
+
     lyrics = re.sub('\.+$', '', lyrics) #geen punten eind vd zin
     lyrics = re.sub('\ +(?=\.)', '.', lyrics) # geen spatie voor punt
     lyrics = re.sub('\ +(?=,)','',lyrics) # geen spaties voor komma
@@ -213,25 +240,25 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = lyrics.replace("\n!","!") #verwijder newline voor uitroepteken
     lyrics = lyrics.replace("\n?","?") #verwijder newline voor vraagteken
     #lyrics = re.sub('(?<=\!|\?)(?=[^\n\?\!\'])', '\n', lyrics) #altijd newline na vraag/uitroepteken, behalve na vraag/uitroepteken, newline of '
-    lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
+    #lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
 
     lyrics = re.sub('refr(ei|e|i)ng?(\ ?:)?', 'Refrein', lyrics, flags=re.IGNORECASE) #vervang refrein/refreng/refring naar Refrein
     lyrics = re.sub('(k|c)o(e|u)plet(\ ?:)?', 'Couplet', lyrics, flags=re.IGNORECASE) #vervang couplet/koeplet naar Couplet
+    lyrics = re.sub('(?<=(Refrein|Couplet)).*', '', lyrics) #verwijder alles na Refrein/Couplet
 
-    lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
-    lyrics = re.sub('(?<=(Refrein|Couplet))(?!(:|\ \d))', ':', lyrics) #altijd ':' na Refrein of Couplet behalve bij ':' of een spatie + cijfer
-    lyrics = re.sub('(?<=[^\n])Refrein:', '\nRefrein:', lyrics) #altijd newline voor Refrein:
-    lyrics = re.sub('Refrein:(?=[^\n])', 'Refrein:\n', lyrics) #altijd newline na Refrein:
-    lyrics = re.sub('(?!=[^\n])(?=Couplet)', '\n', lyrics) #altijd newline voor Couplet
-    lyrics = re.sub('(?<=Couplet:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
-    lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
+    #lyrics = re.sub('(?<=(Refrein|Couplet))(?=\d)', ' ', lyrics) #altijd spatie tussen Refrein/Couplet en cijfer
+    #lyrics = re.sub('(?<=(Refrein|Couplet))(?!(:|\ \d))', ':', lyrics) #altijd ':' na Refrein of Couplet behalve bij ':' of een spatie + cijfer
+    #lyrics = re.sub('(?<=[^\n])Refrein:', '\nRefrein:', lyrics) #altijd newline voor Refrein:
+    #lyrics = re.sub('Refrein:(?=[^\n])', 'Refrein:\n', lyrics) #altijd newline na Refrein:
+    #lyrics = re.sub('(?!=[^\n])(?=Couplet)', '\n', lyrics) #altijd newline voor Couplet
+    #lyrics = re.sub('(?<=Couplet:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
+    #lyrics = re.sub('(?<=Couplet \d:)(?=[^\n])', '\n', lyrics) #altijd newline na Couplet met cijfer
     lyrics = re.sub('\ {2,}', ' ', lyrics) #verwijder meer dan 1 spatie achterelkaar
-    lyrics = re.sub('(?<!=\n)^[^a-zA-Z0-9\']+', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels) TODO zin werkt niet bij spaties aan begin van zin
     lyrics = re.sub('^\'+(?!\w)','', lyrics) #random ' regels
-    lyrics = re.sub('^\ +|\ +$','',lyrics) # geen spaties begin & eind van zin
-    lyrics = re.sub('\n{3,}', '\n\n', lyrics)
+    lyrics = re.sub('(?<=\n)\ *|\ *(?=\n)','',lyrics) # geen spaties begin & eind van zin
+    lyrics = re.sub('(?<=\n)^\ *(?=\n)','',lyrics) #geen witregels
 
-    print(lyrics)
+    lyrics = re.sub('\n{3,}', '\n\n', lyrics)
 
     return lyrics
 
@@ -261,8 +288,12 @@ def database_2_csv():
 
 def database_2_txt():
     import re
-    '''Genereerd bestand met alleen maak lyrics'''
+    '''Genereerd bestand met alleen maar lyrics'''
     #https://github.com/kylemcdonald/gpt-2-poetry TODO
+    print("(re)generating raw lyrics file..")
+    if os.path.exists("lyrics.txt"): #remove existing lyrics.txt
+	    os.remove("lyrics.txt")
+
     file = open("database.txt", 'r', encoding='utf8')
     database = json.load(file)
     file.close()
@@ -285,4 +316,8 @@ def database_2_txt():
 
 if __name__ == '__main__':
     download_database()
-    database_2_txt()
+    anws = input("Do you want to regenerate the raw lyrics file? y/n: ")
+    if anws == 'y':
+        database_2_txt()
+    else:
+    	exit()
