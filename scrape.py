@@ -229,6 +229,7 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
 	    '\u00B2': '2',
 	    '\u2026': '...',
 	    'œ': 'oe',
+        '+': '',
     }
     for key, value in unicode_replace_dict.items():
     	lyrics = lyrics.replace(key, value)
@@ -265,29 +266,37 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
 def database_2_csv():
     '''Genereerd tsv bestand'''
     #https://github.com/kylemcdonald/gpt-2-poetry TODO
+    print("(re)generating csv file..")
+    if os.path.exists("lyrics.csv"): #remove existing lyrics.txt
+        os.remove("lyrics.csv")
+
     file = open("database.txt", 'r', encoding='utf8')
     database = json.load(file)
     file.close()
     cats = database["links"]
 
-    with open("output.csv", 'a', encoding='utf8') as csvFile:
-        csvFile.write("author\tsong\ttext\n")
+    blacklistFile = open("blacklist.txt", 'r').read().splitlines()
+    with open("lyrics.csv", 'a', encoding='utf8') as csvFile:
+        csvFile.write("lyrics\n")
     for cat in cats:
         for song in cats[cat]:
             author = song["zang"]
             title = song["title"]
             lyrics = song["lyrics"]
-            lyrics=lyrics.replace('\r', '').replace('\t', ' ')
+            if song["link"] in blacklistFile:
+                continue #skip als link in blacklist
+            lyrics = clean_lyrics(lyrics).lower()
+            #lyrics = re.sub('\n{2,}', '', lyrics)
+            #lyrics = "".join([s for s in lyrics.splitlines(True) if s.strip("\r\n")])
 
             #if not author: #TODO vervang author naar tekst or muziek als deze false is
             #    continue
-            songString = f"{author},{title},\"{lyrics}\n\"\n"
-            with open("output.csv", 'a', encoding='utf8') as csvFile:
+            songString = f"\"{lyrics}\n\n\"\n"
+            with open("lyrics.csv", 'a', encoding='utf8') as csvFile:
                 csvFile.write(songString)
     print("File generation done.")
 
 def database_2_txt():
-    import re
     '''Genereerd bestand met alleen maar lyrics'''
     #https://github.com/kylemcdonald/gpt-2-poetry TODO
     print("(re)generating raw lyrics file..")
@@ -308,16 +317,17 @@ def database_2_txt():
             if song["link"] in blacklistFile:
                 continue #skip als link in blacklist
             lyrics = clean_lyrics(lyrics)
+            #lyrics = '\n'.join(str(filter(lambda x: not re.match(r'^\s*$', x), lyrics)))
 
-            with open("lyrics.txt", 'a', encoding='utf8') as csvFile:
-                csvFile.write(lyrics)
-                csvFile.write('\n\n')
+            with open("lyrics.txt", 'a', encoding='utf8') as txtfile:
+                txtfile.write(lyrics)
+                #txtfile.write('\n\n')
     print("File generation done.")
 
 if __name__ == '__main__':
     download_database()
     anws = input("Do you want to regenerate the raw lyrics file? y/n: ")
     if anws == 'y':
-        database_2_txt()
+        database_2_csv()
     else:
     	exit()
