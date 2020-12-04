@@ -119,7 +119,8 @@ def download_song_data(link, cat_name):
     except:
         plaats = False
     try:
-        lyrics = replace_with_newlines(soup.find("div", {"class": "field field-name-body field-type-text-with-summary field-label-hidden"})).lstrip().rstrip()
+        lyrics = soup.find("div", {"class": "field field-name-body field-type-text-with-summary field-label-hidden"})
+        lyrics = str(lyrics) #we laten de lyrics in raw html want er zit veel variatie in de html opmaak
     except:
         lyrics = False
 
@@ -177,12 +178,12 @@ def begin_download(categories):
 
 def download_database():
     cat_lyrics_online = check_number_of_lyrics_online()
-    file = open("database.txt", 'r', encoding='utf8')
     try:
+        file = open("database.txt", 'r', encoding='utf8')
         database = json.load(file)
+        file.close()
     except:
         database = {}
-    file.close()
 
     if "count" in database: #database exists, search for extra songs
         add_new_songs(database, cat_lyrics_online)
@@ -199,18 +200,19 @@ def get_hash(text):
 
 
 def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is je vriend
-    lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'").replace('´',"'").replace('‘',"'").replace('`',"'").replace('…','.') #standaard quotes, geen utf-8 shit
-    lyrics = re.sub("(?<!\w)(\w)\.",r'\1', lyrics) #geen punten in afkortingen
-    lyrics = re.sub('(?<!\d)\.(?=[^\.\n!?\'":\)])', '.\n', lyrics) #newline altijd na punt, behalve als het een punt is of een newline of ervoor een cijfer, eg. Urges aan d’n euverkantj...
-    lyrics = re.sub('\ *(?=\.)', '.', lyrics) # geen spatie voor punt
-    lyrics = re.sub('\.+', '', lyrics) #verwijderd alle punten
+    #begin. Eerst van raw html naar text:
+    lyrics.replace('\n','').replace('\t', '').replace('<p>', '\n').replace('</p>', '\n').replace('<br/>', '\n') #newlines kunnen in de html kunnen zitten
+    lyricssoup = bs(lyrics, 'html.parser') #weer terug naar bs object om rest van de tags te filteren
+    lyrics = lyricssoup.text.lstrip().rstrip() #newlines begin en eind van tekst weghalen
+    
+    lyrics = lyrics.replace('”','"').replace('“','"').replace('’', "'").replace('´',"'").replace('‘',"'").replace('`',"'").replace('…','') #standaard quotes, geen utf-8 shit
+    lyrics = re.sub('\.+$', '', lyrics) #geen punten eind vd zin
+    lyrics = re.sub('\ +(?=\.)', '.', lyrics) # geen spatie voor punt
     lyrics = re.sub('\ +(?=,)','',lyrics) # geen spaties voor komma
-    lyrics = re.sub('(?<=\,)\ (?=[^\n])', '\n', lyrics) #spatie na comma veranderen in newline
-    lyrics = re.sub('(?<=\,)(?=\w)', '\n', lyrics) #altijd newline na komma voor woord
     lyrics = re.sub('\ (?=(\!|\?))', '', lyrics) # geen spatie voor vraag/uitroepteken
     lyrics = lyrics.replace("\n!","!") #verwijder newline voor uitroepteken
     lyrics = lyrics.replace("\n?","?") #verwijder newline voor vraagteken
-    lyrics = re.sub('(?<=\!|\?)(?=[^\n\?\!\'])', '\n', lyrics) #altijd newline na vraag/uitroepteken, behalve na vraag/uitroepteken, newline of '
+    #lyrics = re.sub('(?<=\!|\?)(?=[^\n\?\!\'])', '\n', lyrics) #altijd newline na vraag/uitroepteken, behalve na vraag/uitroepteken, newline of '
     lyrics = re.sub('\(\d*x\)', '', lyrics) #geen (2x), (3x) enz
 
     lyrics = re.sub('refr(ei|e|i)ng?(\ ?:)?', 'Refrein', lyrics, flags=re.IGNORECASE) #vervang refrein/refreng/refring naar Refrein
@@ -226,7 +228,10 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
     lyrics = re.sub('\ {2,}', ' ', lyrics) #verwijder meer dan 1 spatie achterelkaar
     lyrics = re.sub('(?<!=\n)^[^a-zA-Z0-9\']+', '', lyrics) # geen spatie als begin van een zin + geen regels zonder letters (behalve witregels) TODO zin werkt niet bij spaties aan begin van zin
     lyrics = re.sub('^\'+(?!\w)','', lyrics) #random ' regels
-    lyrics = re.sub('(?<=\n)\ +','',lyrics) # geen witregel begin van zin
+    lyrics = re.sub('^\ +|\ +$','',lyrics) # geen spaties begin & eind van zin
+    lyrics = re.sub('\n{3,}', '\n\n', lyrics)
+
+    print(lyrics)
 
     return lyrics
 
@@ -249,7 +254,7 @@ def database_2_csv():
 
             #if not author: #TODO vervang author naar tekst or muziek als deze false is
             #    continue
-            songString = f"{author}\t{title}\t\"{lyrics}\n\n\"\n"
+            songString = f"{author},{title},\"{lyrics}\n\"\n"
             with open("output.csv", 'a', encoding='utf8') as csvFile:
                 csvFile.write(songString)
     print("File generation done.")
@@ -279,6 +284,5 @@ def database_2_txt():
     print("File generation done.")
 
 if __name__ == '__main__':
-    if not os.path.isfile("./lyrics.txt"):
-    	download_database()
-        database_2_txt()
+    download_database()
+    database_2_txt()
