@@ -276,31 +276,31 @@ def database_2_csv():
     cats = database["links"]
 
     blacklistFile = open("blacklist.txt", 'r').read().splitlines()
-    #with open("lyrics.csv", 'a', encoding='utf8') as csvFile:
+    with open("lyrics.csv", 'w', encoding='utf8') as csvFile:
     #    csvFile.write("lyrics\n")
-    for cat in cats:
-        for song in cats[cat]:
-            author = song["zang"]
-            title = song["title"]
-            link = song["link"]
-            lyrics = song["lyrics"]
-            if link in blacklistFile:
-                continue #skip als link in blacklist
-            lyrics = clean_lyrics(lyrics).lower()
-            lyrics = lyrics.replace('"', '')
-            #lyrics = "".join([s for s in lyrics.splitlines(True) if s.strip("\r\n")])
+        for cat in cats:
+            for song in cats[cat]:
+                author = song["zang"]
+                title = song["title"]
+                link = song["link"]
+                lyrics = song["lyrics"]
+                if link in blacklistFile:
+                    continue #skip als link in blacklist
+                lyrics = clean_lyrics(lyrics).lower()
+                lyrics = lyrics.replace('"', '')
+                #lyrics = "".join([s for s in lyrics.splitlines(True) if s.strip("\r\n")])
 
-            #if not author: #TODO vervang author naar tekst or muziek als deze false is
-            #    continue
-            songString = f"\"{lyrics}\"\n"
-            with open("lyrics.csv", 'a', encoding='utf8') as csvFile:
-                csvFile.write(songString)
-    print("File generation done.")
+                #if not author: #TODO vervang author naar tekst or muziek als deze false is
+                #    continue
+                songString = f"\"{lyrics}\"\n"
+                
+                csvFile.write(songString)     
+    print("csv generation done.")
 
 def database_2_txt():
     '''Genereerd bestand met alleen maar lyrics'''
     #https://github.com/kylemcdonald/gpt-2-poetry TODO
-    print("(re)generating raw lyrics file..")
+    print("(re)generating txt file..")
     if os.path.exists("lyrics.txt"): #remove existing lyrics.txt
 	    os.remove("lyrics.txt")
 
@@ -310,25 +310,26 @@ def database_2_txt():
     cats = database["links"]
 
     blacklistFile = open("blacklist.txt", 'r').read().splitlines()
-    for cat in cats:
-        for song in cats[cat]:
-            #author = song["zang"]
-            #title = song["title"]
-            lyrics = song["lyrics"]
-            if song["link"] in blacklistFile:
-                continue #skip als link in blacklist
-            lyrics = clean_lyrics(lyrics).lower()
-            lyrics = "".join([s for s in lyrics.splitlines(True) if s.strip("\r\n")])
-
-            with open("lyrics.txt", 'a', encoding='utf8') as txtfile:
-                txtfile.write(lyrics)
-                txtfile.write('\n')
-    print("File generation done.")
+    with open("lyrics.txt", 'w', encoding='utf8') as txtfile:
+        for cat in cats:
+            for song in cats[cat]:
+                #author = song["zang"]
+                #title = song["title"]
+                lyrics = song["lyrics"]
+                if song["link"] in blacklistFile:
+                    continue #skip als link in blacklist
+                lyrics = clean_lyrics(lyrics).lower()
+                lyrics = "".join([s for s in lyrics.splitlines(True) if s.strip("\r\n")])
+                songString = f"{lyrics}\n\n"
+                
+                txtfile.write(songString)
+    print("txt generation done.")
 
 if __name__ == '__main__':
     download_database()
     anws = input("Do you want to regenerate the raw lyrics file? y/n: ")
     if anws == 'y':
         database_2_csv()
+        database_2_txt()
     else:
     	exit()
