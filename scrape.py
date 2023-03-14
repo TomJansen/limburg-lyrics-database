@@ -21,6 +21,7 @@ def check_number_of_lyrics_online():
         x.append({cat: [int(count), link]})
     return x
 
+
 def add_new_songs(database, cat_lyrics_online):
     database_delta = [] # stores the categories with different amount of songs
     temp_existing_cat_dict = {}
@@ -56,7 +57,7 @@ def add_new_songs(database, cat_lyrics_online):
     else:
         print("Begin downloading of lyrics not already in database")
         database["count"] = cat_lyrics_online
-        file = open("database.txt", 'w', encoding='utf8')
+        file = open("database.json", 'w', encoding='utf8')
         file.write(json.dumps(database, ensure_ascii=False, indent=4))
         file.close()
         begin_download(database_delta)
@@ -71,8 +72,9 @@ def replace_with_newlines(element):
             text += '\n'
     return text
 
+
 def download_song_data(link, cat_name):
-    file = open("database.txt", 'r', encoding='utf8')
+    file = open("database.json", 'r', encoding='utf8')
     database = json.load(file)
     file.close()
     try:
@@ -132,15 +134,17 @@ def download_song_data(link, cat_name):
         "link": link
     }
     database["links"][cat_name].append(x) #TODO insert new lyric alphabetically
-    file = open("database.txt", 'w', encoding='utf8')
+    file = open("database.json", 'w', encoding='utf8')
     file.write(json.dumps(database, ensure_ascii=False, indent=4))
     file.close()
+
 
 def get_last_page_int(r):
     soup = bs(r.text, 'html.parser')
     last_link = soup.find("li", {"class": "pager-last last"}).a['href']
     num = re.search("page=([0-9]*)", last_link).group(1)
     return int(num)
+
 
 def get_data_one_page_from_cat_link(r, cat_name):
     soup = bs(r.text, 'html.parser')
@@ -150,6 +154,7 @@ def get_data_one_page_from_cat_link(r, cat_name):
     for link in links_raw:
         link = baseurl + link['href']
         download_song_data(link, cat_name)
+
 
 def get_all_data_from_cat_link(link, cat_name):
     r = requests.get(link)
@@ -166,6 +171,7 @@ def get_all_data_from_cat_link(link, cat_name):
         r = requests.get(full_url)
         get_data_one_page_from_cat_link(r, cat_name)
 
+
 def begin_download(categories):
     for cat in categories:
         cat_name = list(cat.keys())[0]
@@ -173,10 +179,11 @@ def begin_download(categories):
         link = cat[cat_name][1]
         get_all_data_from_cat_link(link, cat_name)
 
+
 def download_database():
     cat_lyrics_online = check_number_of_lyrics_online()
     try:
-        file = open("database.txt", 'r', encoding='utf8')
+        file = open("database.json", 'r', encoding='utf8')
         database = json.load(file)
         file.close()
     except:
@@ -187,10 +194,11 @@ def download_database():
 
     else: #database does not exist, download everything. But still check for paritial database (done in begin_download())
         database["count"] = cat_lyrics_online
-        file = open("database.txt", 'w', encoding='utf8')
+        file = open("database.json", 'w', encoding='utf8')
         file.write(json.dumps(database, ensure_ascii=False, indent=4))
         file.close()
         begin_download(database["count"])
+
 
 def get_hash(text):
     return hashlib.md5(text.encode('utf8')).hexdigest()
@@ -263,73 +271,51 @@ def clean_lyrics(lyrics): #TODO totaal niet optimized -> lookbehind/lookahead is
 
     return lyrics
 
-def database_2_csv():
-    '''Genereerd tsv bestand'''
-    #https://github.com/kylemcdonald/gpt-2-poetry TODO
-    print("(re)generating csv file..")
-    if os.path.exists("lyrics.csv"): #remove existing lyrics.txt
-        os.remove("lyrics.csv")
 
-    file = open("database.txt", 'r', encoding='utf8')
-    database = json.load(file)
-    file.close()
-    cats = database["links"]
-
-    blacklistFile = open("blacklist.txt", 'r').read().splitlines()
-    with open("lyrics.csv", 'w', encoding='utf8') as csvFile:
-    #    csvFile.write("lyrics\n")
-        for cat in cats:
-            for song in cats[cat]:
-                author = song["zang"]
-                title = song["title"]
-                link = song["link"]
-                lyrics = song["lyrics"]
-                if link in blacklistFile:
-                    continue #skip als link in blacklist
-                lyrics = clean_lyrics(lyrics).lower()
-                lyrics = lyrics.replace('"', '')
-                #lyrics = "".join([s for s in lyrics.splitlines(True) if s.strip("\r\n")])
-
-                #if not author: #TODO vervang author naar tekst or muziek als deze false is
-                #    continue
-                songString = f"\"{lyrics}\"\n"
-                
-                csvFile.write(songString)     
-    print("csv generation done.")
-
-def database_2_txt():
+def database_2_JSON():
     '''Genereerd bestand met alleen maar lyrics'''
     #https://github.com/kylemcdonald/gpt-2-poetry TODO
-    print("(re)generating txt file..")
-    if os.path.exists("lyrics.txt"): #remove existing lyrics.txt
-	    os.remove("lyrics.txt")
+    print("(re)generating JSON file..")
+    if os.path.exists("lyrics.json"): #remove existing lyrics.txt
+	    os.remove("lyrics.json")
 
-    file = open("database.txt", 'r', encoding='utf8')
+    file = open("database.json", 'r', encoding='utf8')
     database = json.load(file)
     file.close()
     cats = database["links"]
 
     blacklistFile = open("blacklist.txt", 'r').read().splitlines()
-    with open("lyrics.txt", 'w', encoding='utf8') as txtfile:
+    with open("lyrics.json", 'w', encoding='utf8') as f:
+        song_list = []
         for cat in cats:
             for song in cats[cat]:
-                #author = song["zang"]
-                #title = song["title"]
-                lyrics = song["lyrics"]
                 if song["link"] in blacklistFile:
                     continue #skip als link in blacklist
-                lyrics = clean_lyrics(lyrics).lower()
-                lyrics = "".join([s for s in lyrics.splitlines(True) if s.strip("\r\n")])
-                songString = f"{lyrics}\n\n"
+                    
+                song_dict = {
+                    "title": song["title"],
+                    "tekst": song["tekst"],
+                    "muziek": song["muziek"],
+                    "zang": song["zang"],
+                    "album": song["album"],
+                    "plaats": song["plaats"],
+                    "author": song["zang"],
+                    "lyrics": clean_lyrics(song["lyrics"]).lower()
+                }
+                #lyrics = "".join([s for s in lyrics.splitlines(True) if s.strip("\r\n")])
                 
-                txtfile.write(songString)
-    print("txt generation done.")
+                # Append the dictionary to the song list
+                song_list.append(song_dict)
+
+        json.dump(song_list, f, ensure_ascii=False, indent=8)
+    
+    print("JSON generation done.")
+
 
 if __name__ == '__main__':
     download_database()
-    anws = input("Do you want to regenerate the raw lyrics file? y/n: ")
+    anws = input("Do you want to regenerate the training file? y/n: ")
     if anws == 'y':
-        database_2_csv()
-        database_2_txt()
+        database_2_JSON()
     else:
     	exit()
